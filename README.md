@@ -1,221 +1,282 @@
-# <div align="center"><img src="docs/images/logo.png" alt="CredHub"></div>
-
-[![slack.cloudfoundry.org](https://slack.cloudfoundry.org/badge.svg)](https://slack.cloudfoundry.org)
-
-CredHub manages credentials like passwords, certificates, certificate authorities, ssh keys, rsa keys and arbitrary values (strings and JSON blobs). CredHub provides a CLI and API to get, set, generate and securely store such credentials.
-
-* [Documentation](docs/)
-* [CredHub API Docs](https://docs.cloudfoundry.org/api/credhub/)
-* [CredHub Tracker](https://www.pivotaltracker.com/n/projects/1977341)
-
-CredHub is intended to be deployed by [BOSH](https://bosh.io) using the [credhub-release](https://github.com/pivotal/credhub-release) BOSH release. This repository is for development and is **not intended to be directly deployable**.
-
-Additional repos:
-
-* [credhub-cli](https://github.com/cloudfoundry-incubator/credhub-cli): command line interface for credhub
-* [credhub-release](https://github.com/pivotal/credhub-release): BOSH release of CredHub server
-* [credhub-acceptance-tests](https://github.com/cloudfoundry-incubator/credhub-acceptance-tests): integration tests written in Go.
-
-# Contributing to CredHub
-
-The Cloud Foundry team uses GitHub and accepts contributions via [pull request](https://help.github.com/articles/using-pull-requests).
-
-## Contributor License Agreement
-
-Follow these steps to make a contribution to any of our open source repositories:
-
-1. Ensure that you have completed our CLA Agreement for
-  [individuals](https://www.cloudfoundry.org/pdfs/CFF_Individual_CLA.pdf) or
-  [corporations](https://www.cloudfoundry.org/pdfs/CFF_Corporate_CLA.pdf).
-
-1. Set your name and email (these should match the information on your submitted CLA)
-
-        git config --global user.name "Firstname Lastname"
-        git config --global user.email "your_email@example.com"
-
-## Reporting a Vulnerability
-
-We strongly encourage people to report security vulnerabilities privately to our security team before disclosing them in a public forum.
-
-Please note that the e-mail address below should only be used for reporting undisclosed security vulnerabilities in open source Cloud Foundry codebases and managing the process of fixing such vulnerabilities. We cannot accept regular bug reports or other security-related queries at this address.
-
-The e-mail address to use to contact the CFF Security Team is security@cloudfoundry.org.
-
-Our public PGP key can be obtained from a public key server such as [pgp.mit.edu](https://pgp.mit.edu). Its fingerprint is: 3FC8 9AF3 940B E270 CF25  E122 9965 0006 EF9D C642. More information can be found at [cloudfoundry.org/security](https://cloudfoundry.org/security).
-
-## General Workflow
-
-1. Fork the repository
-1. Create a feature branch (`git checkout -b <my_new_branch>`)
-1. Make changes on your branch
-1. Test your changes locally (see next section) and in a [bosh-lite](https://github.com/cloudfoundry/bosh-lite) or other test environment.
-1. Push to your fork (`git push origin <my_new_branch>`) and submit a pull request
-
-We favor pull requests with very small, single commits with a single purpose. Your pull request is much more likely to be accepted if it is small and focused with a clear message that conveys the intent of your change.
-
-### Generating API Documentation
-
-The CredHub API can generate API documentation by running its test suite (via Spring Rest Docs). CredHub API Documentation can be generated as follows:
-
-```
-./scripts/generate_documentation_snippets.sh
-```
-
-CredHub API documentation will be built as an html file in the CredHub backend gradle subproject build directory: `backends/credhub/build/asciidoc/html5`.
-
-### Development Configuration
-
-Launching in production directly using the `bootRun` target is **unsafe**, as you will launch with a `dev` profile, which has checked-in secret keys in `application-dev.yml`.
-
-#### Dependency Graph
-
-A dependency graph of project components (gradle subprojects) can be generated to better understand project organization. You will need graphviz installed on your system in order to generate the graph.
-
-```
-./gradlew dependenciesGraph
-```
-
-#### Generally
-
-Configuration for the server is spread across the `application*.yml` files.
-
-* Configuration shared by all environments (dev, test, or BOSH-deployed) is in `application.yml`.
-* Development-specific configuration is in `application-dev.yml`. This includes:
-  * A UAA URL intended for development use only,
-  * A JWT public verification key for use with that UAA, and
-  * two `dev-key`s intended for development use only.
-* Per-database configuration is placed in `application-dev-h2.yml`,`application-dev-mysql.yml`, and `application-dev-postgres.yml`. For convenience, these per-database profiles include the `dev` profile.
-
-By default, CredHub launches with the `dev-h2` and `dev` profiles enabled.
-
-#### UAA and the JWT public signing key
-
-CredHub requires a [UAA server](https://github.com/cloudfoundry/uaa) to manage authentication.
-
-In `application-dev.yml` there are two relevant settings:
-
-1. `auth-server.url`. This needs to point to a running UAA server (remote or BOSH-lite, it's up to you).
-2. `security.oauth2.resource.jwt.key-value`. This is the public verification key, corresponding to a private JWT signing key held by your UAA server.
-
-For convenience, the CredHub team runs a public UAA whose IP is in the default `application-dev.yml` manifest. The password grant values are `credhub`/`password` and the client credentials grant value are `credhub_client`/`secret`. This public UAA is for local development usage only! You will need to skip SSL validation in order to use it.
-
-#### Running CredHub with local UAA
-
-In order to run CredHub against a UAA running on your local machine, do the following:
-1. Start a UAA with Docker: `docker run -d --mount type=bind,source=$PWD/config/uaa.yml,target=/uaa/uaa.yml -p 127.0.0.1:8080:8080 pcfseceng/uaa:latest`
-1. Start CredHub server pointing at the local UAA: `./scripts/start_server.sh -Dspring.profiles.active=dev,dev-h2,dev-local-uaa`
-
-For testing purposes, the local UAA bootstraps a user (username: `credhub`/ password: `password`) and a client (client ID:`credhub_client` / client secret:`secret`), with which you can access the local CredHub. For example:
-```
-# log into CredHub CLI using a UAA client; this client comes with permissions to access all CredHub credential paths (see `application-dev.yml` manifest)
+<div class="Box-sc-g0xbh4-0 bJMeLZ js-snippet-clipboard-copy-unpositioned" data-hpc="true"><article class="markdown-body entry-content container-lg" itemprop="text"><h1 tabindex="-1" dir="auto" class=""><a id="" class="anchor" aria-hidden="true" tabindex="-1" href="#"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a><div align="center" dir="auto"><a target="_blank" rel="noopener noreferrer" href="/cloudfoundry/credhub/blob/main/docs/images/logo.png"><img src="/cloudfoundry/credhub/raw/main/docs/images/logo.png" alt="信用中心" style="max-width: 100%;"></a></div></h1>
+<p dir="auto"><a href="https://slack.cloudfoundry.org" rel="nofollow"><img src="https://camo.githubusercontent.com/f0f08ff951d7f6a01943d4f6f5c80ad2a5ec8ca421bc10833ef3c4825da70053/68747470733a2f2f736c61636b2e636c6f7564666f756e6472792e6f72672f62616467652e737667" alt="slack.cloudfoundry.org" data-canonical-src="https://slack.cloudfoundry.org/badge.svg" style="max-width: 100%;"></a></p>
+<p dir="auto"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">CredHub 管理密码、证书、证书颁发机构、ssh 密钥、rsa 密钥和任意值（字符串和 JSON blob）等凭证。</font><font style="vertical-align: inherit;">CredHub 提供 CLI 和 API 来获取、设置、生成和安全存储此类凭证。</font></font></p>
+<ul dir="auto">
+<li><a href="/cloudfoundry/credhub/blob/main/docs"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">文档</font></font></a></li>
+<li><a href="https://docs.cloudfoundry.org/api/credhub/" rel="nofollow"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">CredHub API 文档</font></font></a></li>
+<li><a href="https://www.pivotaltracker.com/n/projects/1977341" rel="nofollow"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">CredHub追踪器</font></font></a></li>
+</ul>
+<p dir="auto"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">CredHub 旨在由</font></font><a href="https://bosh.io" rel="nofollow"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">BOSH</font></font></a><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">使用</font></font><a href="https://github.com/pivotal/credhub-release"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">credhub-release</font></font></a><font style="vertical-align: inherit;"><font style="vertical-align: inherit;"> BOSH 版本进行部署。</font><font style="vertical-align: inherit;">该存储库用于开发，并不</font></font><strong><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">适合直接部署</font></font></strong><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">。</font></font></p>
+<p dir="auto"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">额外的回购：</font></font></p>
+<ul dir="auto">
+<li><a href="https://github.com/cloudfoundry-incubator/credhub-cli"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">credhub-cli</font></font></a><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">：credhub 的命令行界面</font></font></li>
+<li><a href="https://github.com/pivotal/credhub-release"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">credhub-release</font></font></a><font style="vertical-align: inherit;"><font style="vertical-align: inherit;"> : BOSH 发布 CredHub 服务器</font></font></li>
+<li><a href="https://github.com/cloudfoundry-incubator/credhub-acceptance-tests"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">credhub-acceptance-tests</font></font></a><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">：用 Go 编写的集成测试。</font></font></li>
+</ul>
+<h1 tabindex="-1" dir="auto"><a id="user-content-contributing-to-credhub" class="anchor" aria-hidden="true" tabindex="-1" href="#contributing-to-credhub"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">为 CredHub 做出贡献</font></font></h1>
+<p dir="auto"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">Cloud Foundry 团队使用 GitHub 并通过</font></font><a href="https://help.github.com/articles/using-pull-requests"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">拉取请求</font></font></a><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">接受贡献。</font></font></p>
+<h2 tabindex="-1" dir="auto"><a id="user-content-contributor-license-agreement" class="anchor" aria-hidden="true" tabindex="-1" href="#contributor-license-agreement"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">贡献者许可协议</font></font></h2>
+<p dir="auto"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">请按照以下步骤为我们的任何开源存储库做出贡献：</font></font></p>
+<ol dir="auto">
+<li>
+<p dir="auto"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">确保您已完成我们针对
+</font></font><a href="https://www.cloudfoundry.org/pdfs/CFF_Individual_CLA.pdf" rel="nofollow"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">个人</font></font></a><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">或
+</font></font><a href="https://www.cloudfoundry.org/pdfs/CFF_Corporate_CLA.pdf" rel="nofollow"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">公司</font></font></a><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">的 CLA 协议。</font></font></p>
+</li>
+<li>
+<p dir="auto"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">设置您的姓名和电子邮件（这些信息应与您提交的 CLA 上的信息匹配）</font></font></p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto"><pre class="notranslate"><code> git config --global user.name "Firstname Lastname"
+ git config --global user.email "your_email@example.com"
+</code></pre><div class="zeroclipboard-container">
+    <clipboard-copy aria-label="Copy" class="ClipboardButton btn btn-invisible js-clipboard-copy m-2 p-0 tooltipped-no-delay d-flex flex-justify-center flex-items-center" data-copy-feedback="Copied!" data-tooltip-direction="w" value=" git config --global user.name &quot;Firstname Lastname&quot;
+ git config --global user.email &quot;your_email@example.com&quot;" tabindex="0" role="button">
+      <svg aria-hidden="true" height="16" viewBox="0 0 16 16" version="1.1" width="16" data-view-component="true" class="octicon octicon-copy js-clipboard-copy-icon">
+    <path d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 0 1 0 1.5h-1.5a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-1.5a.75.75 0 0 1 1.5 0v1.5A1.75 1.75 0 0 1 9.25 16h-7.5A1.75 1.75 0 0 1 0 14.25Z"></path><path d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0 1 14.25 11h-7.5A1.75 1.75 0 0 1 5 9.25Zm1.75-.25a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-7.5a.25.25 0 0 0-.25-.25Z"></path>
+</svg>
+      <svg aria-hidden="true" height="16" viewBox="0 0 16 16" version="1.1" width="16" data-view-component="true" class="octicon octicon-check js-clipboard-check-icon color-fg-success d-none">
+    <path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z"></path>
+</svg>
+    </clipboard-copy>
+  </div></div>
+</li>
+</ol>
+<h2 tabindex="-1" dir="auto"><a id="user-content-reporting-a-vulnerability" class="anchor" aria-hidden="true" tabindex="-1" href="#reporting-a-vulnerability"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">报告漏洞</font></font></h2>
+<p dir="auto"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">我们强烈鼓励人们在公共论坛上披露安全漏洞之前私下向我们的安全团队报告安全漏洞。</font></font></p>
+<p dir="auto"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">请注意，下面的电子邮件地址只能用于报告开源 Cloud Foundry 代码库中未公开的安全漏洞以及管理修复此类漏洞的过程。</font><font style="vertical-align: inherit;">我们无法在此地址接受定期错误报告或其他与安全相关的查询。</font></font></p>
+<p dir="auto"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">用于联系 CFF 安全团队的电子邮件地址是</font></font><a href="mailto:security@cloudfoundry.org"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">security@cloudfoundry.org</font></font></a><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">。</font></font></p>
+<p dir="auto"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">我们的 PGP 公钥可以从公钥服务器（例如</font></font><a href="https://pgp.mit.edu" rel="nofollow"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">pgp.mit.edu ）</font></font></a><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">获取。</font><font style="vertical-align: inherit;">其指纹为：3FC8 9AF3 940B E270 CF25 E122 9965 0006 EF9D C642。</font><font style="vertical-align: inherit;">更多信息请访问</font></font><a href="https://cloudfoundry.org/security" rel="nofollow"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">cloudfoundry.org/security</font></font></a><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">。</font></font></p>
+<h2 tabindex="-1" dir="auto"><a id="user-content-general-workflow" class="anchor" aria-hidden="true" tabindex="-1" href="#general-workflow"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">一般工作流程</font></font></h2>
+<ol dir="auto">
+<li><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">分叉存储库</font></font></li>
+<li><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">创建功能分支 ( </font></font><code>git checkout -b &lt;my_new_branch&gt;</code><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">)</font></font></li>
+<li><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">在您的分支上进行更改</font></font></li>
+<li><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">在本地测试您的更改（请参阅下一节）并在</font></font><a href="https://github.com/cloudfoundry/bosh-lite"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">bosh-lite</font></font></a><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">或其他测试环境中进行测试。</font></font></li>
+<li><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">推送到您的分叉 ( </font></font><code>git push origin &lt;my_new_branch&gt;</code><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">) 并提交拉取请求</font></font></li>
+</ol>
+<p dir="auto"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">我们赞成拉取请求，这些请求具有非常小的、单一的提交和单一的目的。</font><font style="vertical-align: inherit;">如果您的拉取请求很小并且有明确的信息来传达您的更改意图，那么您的拉取请求更有可能被接受。</font></font></p>
+<h3 tabindex="-1" dir="auto"><a id="user-content-generating-api-documentation" class="anchor" aria-hidden="true" tabindex="-1" href="#generating-api-documentation"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">生成API文档</font></font></h3>
+<p dir="auto"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">CredHub API 可以通过运行其测试套件（通过 Spring Rest Docs）来生成 API 文档。</font><font style="vertical-align: inherit;">CredHub API 文档可以按如下方式生成：</font></font></p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto"><pre class="notranslate"><code>./scripts/generate_documentation_snippets.sh
+</code></pre><div class="zeroclipboard-container">
+    <clipboard-copy aria-label="Copy" class="ClipboardButton btn btn-invisible js-clipboard-copy m-2 p-0 tooltipped-no-delay d-flex flex-justify-center flex-items-center" data-copy-feedback="Copied!" data-tooltip-direction="w" value="./scripts/generate_documentation_snippets.sh" tabindex="0" role="button">
+      <svg aria-hidden="true" height="16" viewBox="0 0 16 16" version="1.1" width="16" data-view-component="true" class="octicon octicon-copy js-clipboard-copy-icon">
+    <path d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 0 1 0 1.5h-1.5a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-1.5a.75.75 0 0 1 1.5 0v1.5A1.75 1.75 0 0 1 9.25 16h-7.5A1.75 1.75 0 0 1 0 14.25Z"></path><path d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0 1 14.25 11h-7.5A1.75 1.75 0 0 1 5 9.25Zm1.75-.25a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-7.5a.25.25 0 0 0-.25-.25Z"></path>
+</svg>
+      <svg aria-hidden="true" height="16" viewBox="0 0 16 16" version="1.1" width="16" data-view-component="true" class="octicon octicon-check js-clipboard-check-icon color-fg-success d-none">
+    <path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z"></path>
+</svg>
+    </clipboard-copy>
+  </div></div>
+<p dir="auto"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">CredHub API 文档将在 CredHub 后端 gradle 子项目构建目录中构建为 html 文件：</font></font><code>backends/credhub/build/asciidoc/html5</code><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">.</font></font></p>
+<h3 tabindex="-1" dir="auto"><a id="user-content-development-configuration" class="anchor" aria-hidden="true" tabindex="-1" href="#development-configuration"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">开发配置</font></font></h3>
+<p dir="auto"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">直接使用</font></font><code>bootRun</code><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">目标在生产中启动是</font></font><strong><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">不安全的</font></font></strong><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">，因为您将使用</font></font><code>dev</code><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">配置文件启动，该配置文件已在</font></font><code>application-dev.yml</code><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">.</font></font></p>
+<h4 tabindex="-1" dir="auto"><a id="user-content-dependency-graph" class="anchor" aria-hidden="true" tabindex="-1" href="#dependency-graph"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">依赖图</font></font></h4>
+<p dir="auto"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">可以生成项目组件（gradle 子项目）的依赖关系图，以更好地理解项目组织。</font><font style="vertical-align: inherit;">您需要在系统上安装 graphviz 才能生成图表。</font></font></p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto"><pre class="notranslate"><code>./gradlew dependenciesGraph
+</code></pre><div class="zeroclipboard-container">
+    <clipboard-copy aria-label="Copy" class="ClipboardButton btn btn-invisible js-clipboard-copy m-2 p-0 tooltipped-no-delay d-flex flex-justify-center flex-items-center" data-copy-feedback="Copied!" data-tooltip-direction="w" value="./gradlew dependenciesGraph" tabindex="0" role="button">
+      <svg aria-hidden="true" height="16" viewBox="0 0 16 16" version="1.1" width="16" data-view-component="true" class="octicon octicon-copy js-clipboard-copy-icon">
+    <path d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 0 1 0 1.5h-1.5a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-1.5a.75.75 0 0 1 1.5 0v1.5A1.75 1.75 0 0 1 9.25 16h-7.5A1.75 1.75 0 0 1 0 14.25Z"></path><path d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0 1 14.25 11h-7.5A1.75 1.75 0 0 1 5 9.25Zm1.75-.25a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-7.5a.25.25 0 0 0-.25-.25Z"></path>
+</svg>
+      <svg aria-hidden="true" height="16" viewBox="0 0 16 16" version="1.1" width="16" data-view-component="true" class="octicon octicon-check js-clipboard-check-icon color-fg-success d-none">
+    <path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z"></path>
+</svg>
+    </clipboard-copy>
+  </div></div>
+<h4 tabindex="-1" dir="auto"><a id="user-content-generally" class="anchor" aria-hidden="true" tabindex="-1" href="#generally"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">一般来说</font></font></h4>
+<p dir="auto"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">服务器的配置分布在</font></font><code>application*.yml</code><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">文件中。</font></font></p>
+<ul dir="auto">
+<li><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">所有环境（开发、测试或 BOSH 部署）共享的配置位于</font></font><code>application.yml</code><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">.</font></font></li>
+<li><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">特定于开发的配置位于</font></font><code>application-dev.yml</code><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">. </font><font style="vertical-align: inherit;">这包括：
+</font></font><ul dir="auto">
+<li><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">仅供开发使用的 UAA URL，</font></font></li>
+<li><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">用于该 UAA 的 JWT 公共验证密钥，以及</font></font></li>
+<li><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">两个</font></font><code>dev-key</code><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">仅供开发使用。</font></font></li>
+</ul>
+</li>
+<li><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">每个数据库的配置位于</font></font><code>application-dev-h2.yml</code><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">、</font></font><code>application-dev-mysql.yml</code><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">和中</font></font><code>application-dev-postgres.yml</code><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">。</font><font style="vertical-align: inherit;">为了方便起见，这些每个数据库的配置文件包括</font></font><code>dev</code><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">配置文件。</font></font></li>
+</ul>
+<p dir="auto"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">默认情况下，CredHub 启动时启用</font></font><code>dev-h2</code><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">和</font></font><code>dev</code><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">配置文件。</font></font></p>
+<h4 tabindex="-1" dir="auto"><a id="user-content-uaa-and-the-jwt-public-signing-key" class="anchor" aria-hidden="true" tabindex="-1" href="#uaa-and-the-jwt-public-signing-key"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">UAA 和 JWT 公共签名密钥</font></font></h4>
+<p dir="auto"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">CredHub 需要</font></font><a href="https://github.com/cloudfoundry/uaa"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">UAA 服务器</font></font></a><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">来管理身份验证。</font></font></p>
+<p dir="auto"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">其中</font></font><code>application-dev.yml</code><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">有两个相关设置：</font></font></p>
+<ol dir="auto">
+<li><code>auth-server.url</code><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">。</font><font style="vertical-align: inherit;">这需要指向正在运行的 UAA 服务器（远程或 BOSH-lite，这取决于您）。</font></font></li>
+<li><code>security.oauth2.resource.jwt.key-value</code><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">。</font><font style="vertical-align: inherit;">这是公共验证密钥，对应于 UAA 服务器持有的私有 JWT 签名密钥。</font></font></li>
+</ol>
+<p dir="auto"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">为了方便起见，CredHub 团队运行一个公共 UAA，其 IP 在默认</font></font><code>application-dev.yml</code><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">清单中。</font><font style="vertical-align: inherit;">密码授予值为</font></font><code>credhub</code><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">/ </font></font><code>password</code><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">，客户端凭据授予值为</font></font><code>credhub_client</code><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">/ </font></font><code>secret</code><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">。</font><font style="vertical-align: inherit;">此公共 UAA 仅供本地开发使用！</font><font style="vertical-align: inherit;">您需要跳过 SSL 验证才能使用它。</font></font></p>
+<h4 tabindex="-1" dir="auto"><a id="user-content-running-credhub-with-local-uaa" class="anchor" aria-hidden="true" tabindex="-1" href="#running-credhub-with-local-uaa"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">使用本地 UAA 运行 CredHub</font></font></h4>
+<p dir="auto"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">为了针对本地计算机上运行的 UAA 运行 CredHub，请执行以下操作：</font></font></p>
+<ol dir="auto">
+<li><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">使用 Docker 启动 UAA：</font></font><code>docker run -d --mount type=bind,source=$PWD/config/uaa.yml,target=/uaa/uaa.yml -p 127.0.0.1:8080:8080 pcfseceng/uaa:latest</code></li>
+<li><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">启动指向本地 UAA 的 CredHub 服务器：</font></font><code>./scripts/start_server.sh -Dspring.profiles.active=dev,dev-h2,dev-local-uaa</code></li>
+</ol>
+<p dir="auto"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">出于测试目的，本地 UAA 会引导一个用户（用户名：</font></font><code>credhub</code><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">/ 密码：</font></font><code>password</code><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">）和一个客户端（客户端 ID：</font></font><code>credhub_client</code><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">/ 客户端密码：</font></font><code>secret</code><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">），您可以通过它们访问本地 CredHub。</font><font style="vertical-align: inherit;">例如：</font></font></p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto"><pre class="notranslate"><code># log into CredHub CLI using a UAA client; this client comes with permissions to access all CredHub credential paths (see `application-dev.yml` manifest)
 credhub login -s https://localhost:9000 --client-name=credhub_client --client-secret=secret --skip-tls-validation
 # log into CredHub CLI using a UAA user; this user does not come with permissions to CredHub credential paths (see `application-dev.yml` manifest)
 credhub login -s https://localhost:9000 -u credhub -p password --skip-tls-validation
-```
-
-#### Starting the server with different databases
-
-##### H2 (the default)
-
-H2 datasource configuration is in `application-dev-h2.yml`.
-
-```sh
-./scripts/start_server.sh
-```
-
-##### PostgreSQL
-
-Postgres datasource configuration is in `application-dev-postgres.yml`.
-
-Before development, you'll need to create the target database.
-
-```sh
-createdb credhub_dev
-```
-
-Then to run in development mode with Postgres
-
-```sh
-./scripts/start_server.sh -Dspring.profiles.active=dev,dev-postgres
-```
-
-##### MySQL
-
-MySQL datasource configuration is in `application-dev-mysql.yml`.
-
-Log into your MySQL server and create databases `credhub_dev` and `credhub_test` with privileges granted to `root`.
-
-```shell
-mysql -u root
+</code></pre><div class="zeroclipboard-container">
+    <clipboard-copy aria-label="Copy" class="ClipboardButton btn btn-invisible js-clipboard-copy m-2 p-0 tooltipped-no-delay d-flex flex-justify-center flex-items-center" data-copy-feedback="Copied!" data-tooltip-direction="w" value="# log into CredHub CLI using a UAA client; this client comes with permissions to access all CredHub credential paths (see `application-dev.yml` manifest)
+credhub login -s https://localhost:9000 --client-name=credhub_client --client-secret=secret --skip-tls-validation
+# log into CredHub CLI using a UAA user; this user does not come with permissions to CredHub credential paths (see `application-dev.yml` manifest)
+credhub login -s https://localhost:9000 -u credhub -p password --skip-tls-validation" tabindex="0" role="button">
+      <svg aria-hidden="true" height="16" viewBox="0 0 16 16" version="1.1" width="16" data-view-component="true" class="octicon octicon-copy js-clipboard-copy-icon">
+    <path d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 0 1 0 1.5h-1.5a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-1.5a.75.75 0 0 1 1.5 0v1.5A1.75 1.75 0 0 1 9.25 16h-7.5A1.75 1.75 0 0 1 0 14.25Z"></path><path d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0 1 14.25 11h-7.5A1.75 1.75 0 0 1 5 9.25Zm1.75-.25a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-7.5a.25.25 0 0 0-.25-.25Z"></path>
+</svg>
+      <svg aria-hidden="true" height="16" viewBox="0 0 16 16" version="1.1" width="16" data-view-component="true" class="octicon octicon-check js-clipboard-check-icon color-fg-success d-none">
+    <path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z"></path>
+</svg>
+    </clipboard-copy>
+  </div></div>
+<h4 tabindex="-1" dir="auto"><a id="user-content-starting-the-server-with-different-databases" class="anchor" aria-hidden="true" tabindex="-1" href="#starting-the-server-with-different-databases"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">使用不同的数据库启动服务器</font></font></h4>
+<h5 tabindex="-1" dir="auto"><a id="user-content-h2-the-default" class="anchor" aria-hidden="true" tabindex="-1" href="#h2-the-default"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">H2（默认）</font></font></h5>
+<p dir="auto"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">H2 数据源配置位于</font></font><code>application-dev-h2.yml</code><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">.</font></font></p>
+<div class="highlight highlight-source-shell notranslate position-relative overflow-auto" dir="auto"><pre>./scripts/start_server.sh</pre><div class="zeroclipboard-container">
+    <clipboard-copy aria-label="Copy" class="ClipboardButton btn btn-invisible js-clipboard-copy m-2 p-0 tooltipped-no-delay d-flex flex-justify-center flex-items-center" data-copy-feedback="Copied!" data-tooltip-direction="w" value="./scripts/start_server.sh" tabindex="0" role="button">
+      <svg aria-hidden="true" height="16" viewBox="0 0 16 16" version="1.1" width="16" data-view-component="true" class="octicon octicon-copy js-clipboard-copy-icon">
+    <path d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 0 1 0 1.5h-1.5a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-1.5a.75.75 0 0 1 1.5 0v1.5A1.75 1.75 0 0 1 9.25 16h-7.5A1.75 1.75 0 0 1 0 14.25Z"></path><path d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0 1 14.25 11h-7.5A1.75 1.75 0 0 1 5 9.25Zm1.75-.25a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-7.5a.25.25 0 0 0-.25-.25Z"></path>
+</svg>
+      <svg aria-hidden="true" height="16" viewBox="0 0 16 16" version="1.1" width="16" data-view-component="true" class="octicon octicon-check js-clipboard-check-icon color-fg-success d-none">
+    <path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z"></path>
+</svg>
+    </clipboard-copy>
+  </div></div>
+<h5 tabindex="-1" dir="auto"><a id="user-content-postgresql" class="anchor" aria-hidden="true" tabindex="-1" href="#postgresql"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">PostgreSQL</font></font></h5>
+<p dir="auto"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">Postgres 数据源配置位于</font></font><code>application-dev-postgres.yml</code><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">.</font></font></p>
+<p dir="auto"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">在开发之前，您需要创建目标数据库。</font></font></p>
+<div class="highlight highlight-source-shell notranslate position-relative overflow-auto" dir="auto"><pre>createdb credhub_dev</pre><div class="zeroclipboard-container">
+    <clipboard-copy aria-label="Copy" class="ClipboardButton btn btn-invisible js-clipboard-copy m-2 p-0 tooltipped-no-delay d-flex flex-justify-center flex-items-center" data-copy-feedback="Copied!" data-tooltip-direction="w" value="createdb credhub_dev" tabindex="0" role="button">
+      <svg aria-hidden="true" height="16" viewBox="0 0 16 16" version="1.1" width="16" data-view-component="true" class="octicon octicon-copy js-clipboard-copy-icon">
+    <path d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 0 1 0 1.5h-1.5a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-1.5a.75.75 0 0 1 1.5 0v1.5A1.75 1.75 0 0 1 9.25 16h-7.5A1.75 1.75 0 0 1 0 14.25Z"></path><path d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0 1 14.25 11h-7.5A1.75 1.75 0 0 1 5 9.25Zm1.75-.25a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-7.5a.25.25 0 0 0-.25-.25Z"></path>
+</svg>
+      <svg aria-hidden="true" height="16" viewBox="0 0 16 16" version="1.1" width="16" data-view-component="true" class="octicon octicon-check js-clipboard-check-icon color-fg-success d-none">
+    <path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z"></path>
+</svg>
+    </clipboard-copy>
+  </div></div>
+<p dir="auto"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">然后使用 Postgres 在开发模式下运行</font></font></p>
+<div class="highlight highlight-source-shell notranslate position-relative overflow-auto" dir="auto"><pre>./scripts/start_server.sh -Dspring.profiles.active=dev,dev-postgres</pre><div class="zeroclipboard-container">
+    <clipboard-copy aria-label="Copy" class="ClipboardButton btn btn-invisible js-clipboard-copy m-2 p-0 tooltipped-no-delay d-flex flex-justify-center flex-items-center" data-copy-feedback="Copied!" data-tooltip-direction="w" value="./scripts/start_server.sh -Dspring.profiles.active=dev,dev-postgres" tabindex="0" role="button">
+      <svg aria-hidden="true" height="16" viewBox="0 0 16 16" version="1.1" width="16" data-view-component="true" class="octicon octicon-copy js-clipboard-copy-icon">
+    <path d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 0 1 0 1.5h-1.5a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-1.5a.75.75 0 0 1 1.5 0v1.5A1.75 1.75 0 0 1 9.25 16h-7.5A1.75 1.75 0 0 1 0 14.25Z"></path><path d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0 1 14.25 11h-7.5A1.75 1.75 0 0 1 5 9.25Zm1.75-.25a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-7.5a.25.25 0 0 0-.25-.25Z"></path>
+</svg>
+      <svg aria-hidden="true" height="16" viewBox="0 0 16 16" version="1.1" width="16" data-view-component="true" class="octicon octicon-check js-clipboard-check-icon color-fg-success d-none">
+    <path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z"></path>
+</svg>
+    </clipboard-copy>
+  </div></div>
+<h5 tabindex="-1" dir="auto"><a id="user-content-mysql" class="anchor" aria-hidden="true" tabindex="-1" href="#mysql"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">MySQL</font></font></h5>
+<p dir="auto"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">MySQL 数据源配置位于</font></font><code>application-dev-mysql.yml</code><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">.</font></font></p>
+<p dir="auto"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">登录到您的 MySQL 服务器并创建数据库</font></font><code>credhub_dev</code><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">并</font></font><code>credhub_test</code><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">授予</font></font><code>root</code><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">.</font></font></p>
+<div class="highlight highlight-source-shell notranslate position-relative overflow-auto" dir="auto"><pre>mysql -u root
+create database credhub_test<span class="pl-k">;</span>
+create database credhub_dev<span class="pl-k">;</span></pre><div class="zeroclipboard-container">
+    <clipboard-copy aria-label="Copy" class="ClipboardButton btn btn-invisible js-clipboard-copy m-2 p-0 tooltipped-no-delay d-flex flex-justify-center flex-items-center" data-copy-feedback="Copied!" data-tooltip-direction="w" value="mysql -u root
 create database credhub_test;
-create database credhub_dev;
-```
-
-If you're on a Mac using Homebrew and you run into a problem where you install MySQL and it isn't running (i.e., `mysql -u root` errors with a socket error), you may need to uninstall mysql, delete the `/usr/local/var/mysql` directory (*Warning: this will delete all local MySQL data!*), and then reinstall MySQL.
-
-Alternatively, you can also start a local MySQL server with docker:
-```
-docker run \
+create database credhub_dev;" tabindex="0" role="button">
+      <svg aria-hidden="true" height="16" viewBox="0 0 16 16" version="1.1" width="16" data-view-component="true" class="octicon octicon-copy js-clipboard-copy-icon">
+    <path d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 0 1 0 1.5h-1.5a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-1.5a.75.75 0 0 1 1.5 0v1.5A1.75 1.75 0 0 1 9.25 16h-7.5A1.75 1.75 0 0 1 0 14.25Z"></path><path d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0 1 14.25 11h-7.5A1.75 1.75 0 0 1 5 9.25Zm1.75-.25a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-7.5a.25.25 0 0 0-.25-.25Z"></path>
+</svg>
+      <svg aria-hidden="true" height="16" viewBox="0 0 16 16" version="1.1" width="16" data-view-component="true" class="octicon octicon-check js-clipboard-check-icon color-fg-success d-none">
+    <path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z"></path>
+</svg>
+    </clipboard-copy>
+  </div></div>
+<p dir="auto"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">如果您在 Mac 上使用 Homebrew，并且遇到安装 MySQL 但它没有运行的问题（即，</font></font><code>mysql -u root</code><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">套接字错误），您可能需要卸载 mysql，删除目录</font></font><code>/usr/local/var/mysql</code><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">（</font></font><em><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">警告：这将删除所有本地MySQL数据！</font></font></em><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">），然后重新安装MySQL。</font></font></p>
+<p dir="auto"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">或者，您也可以使用 docker 启动本地 MySQL 服务器：</font></font></p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto"><pre class="notranslate"><code>docker run \
   --name mysql-server \
   --env MYSQL_ALLOW_EMPTY_PASSWORD='yes' \
   --env MYSQL_ROOT_HOST='%' \
   --publish 3306:3306 \
   --detach \
   "mysql:8.0"
-```    
-
-Then to run in development mode with MySQL:
-
-```sh
-./scripts/start_server.sh -Dspring.profiles.active=dev,dev-mysql
-```
-
-#### Debugging the server
-
-To load JDWP agent for credhub jvm debugging, start the server as follows:
-```sh
-./scripts/start_server.sh -Pdebug=true
-```
-
-You can then attach your debugger to port 5005 of the jvm process.
-
-To suspend the server start-up until the debugger is attached (useful for
-debugging start-up code), start the server as follows:
-```sh
-./scripts/start_server.sh -Pdebugs=true
-```
-
-#### Running tests with different databases
-
-Testing with different databases requires you to set a system property with the profile corresponding to your desired database. For example, to test with H2, you'll need to run the tests with the `-Dspring.profiles.active=unit-test-h2` profile.
-
-During development, it is helpful to set up different IntelliJ testing profiles that use the following VM Options:
-
-- `-ea -Dspring.profiles.active=unit-test-h2` for testing with H2
-- `-ea -Dspring.profiles.active=unit-test-mysql` for testing with MySQL
-- `-ea -Dspring.profiles.active=unit-test-postgres` for testing with Postgres
-
-### Testing with the CLI and Acceptance Tests
-
-#### Using the CLI locally
-
-After having pulled the [credhub-cli](https://github.com/cloudfoundry-incubator/credhub-cli) repo, run `make`, and then run the following command to target your locally running CredHub instance:
-
-```shell
-build/credhub login -s https://localhost:9000 --client-name=credhub_client --client-secret=secret --skip-tls-validation
-```
-
-#### Running the Acceptance Tests
-
-First, be sure to pull and compile the [credhub-cli](https://github.com/cloudfoundry-incubator/credhub-cli), as described above.
-
-Make sure your development server is running. When it starts up for the first time, it will create a server CA and server certificate for SSL, as well as a trusted client CA for testing mutual TLS authentication. These will be located in `src/test/resources` relative to the `credhub` repository.
-
-Pull [credhub-acceptance-tests](https://github.com/cloudfoundry-incubator/credhub-acceptance-tests) and run:
-
-```shell
-CREDENTIAL_ROOT=/path/to/credhub/repo/plus/src/test/resources ./scripts/run_tests.sh
-```
-
-Assuming it works, that will generate some test client certificates for testing mutual TLS (in `certs/` in the acceptance test directory) and run the acceptance test suite against your locally running credhub server.
-
+</code></pre><div class="zeroclipboard-container">
+    <clipboard-copy aria-label="Copy" class="ClipboardButton btn btn-invisible js-clipboard-copy m-2 p-0 tooltipped-no-delay d-flex flex-justify-center flex-items-center" data-copy-feedback="Copied!" data-tooltip-direction="w" value="docker run \
+  --name mysql-server \
+  --env MYSQL_ALLOW_EMPTY_PASSWORD='yes' \
+  --env MYSQL_ROOT_HOST='%' \
+  --publish 3306:3306 \
+  --detach \
+  &quot;mysql:8.0&quot;" tabindex="0" role="button">
+      <svg aria-hidden="true" height="16" viewBox="0 0 16 16" version="1.1" width="16" data-view-component="true" class="octicon octicon-copy js-clipboard-copy-icon">
+    <path d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 0 1 0 1.5h-1.5a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-1.5a.75.75 0 0 1 1.5 0v1.5A1.75 1.75 0 0 1 9.25 16h-7.5A1.75 1.75 0 0 1 0 14.25Z"></path><path d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0 1 14.25 11h-7.5A1.75 1.75 0 0 1 5 9.25Zm1.75-.25a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-7.5a.25.25 0 0 0-.25-.25Z"></path>
+</svg>
+      <svg aria-hidden="true" height="16" viewBox="0 0 16 16" version="1.1" width="16" data-view-component="true" class="octicon octicon-check js-clipboard-check-icon color-fg-success d-none">
+    <path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z"></path>
+</svg>
+    </clipboard-copy>
+  </div></div>
+<p dir="auto"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">然后使用 MySQL 在开发模式下运行：</font></font></p>
+<div class="highlight highlight-source-shell notranslate position-relative overflow-auto" dir="auto"><pre>./scripts/start_server.sh -Dspring.profiles.active=dev,dev-mysql</pre><div class="zeroclipboard-container">
+    <clipboard-copy aria-label="Copy" class="ClipboardButton btn btn-invisible js-clipboard-copy m-2 p-0 tooltipped-no-delay d-flex flex-justify-center flex-items-center" data-copy-feedback="Copied!" data-tooltip-direction="w" value="./scripts/start_server.sh -Dspring.profiles.active=dev,dev-mysql" tabindex="0" role="button">
+      <svg aria-hidden="true" height="16" viewBox="0 0 16 16" version="1.1" width="16" data-view-component="true" class="octicon octicon-copy js-clipboard-copy-icon">
+    <path d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 0 1 0 1.5h-1.5a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-1.5a.75.75 0 0 1 1.5 0v1.5A1.75 1.75 0 0 1 9.25 16h-7.5A1.75 1.75 0 0 1 0 14.25Z"></path><path d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0 1 14.25 11h-7.5A1.75 1.75 0 0 1 5 9.25Zm1.75-.25a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-7.5a.25.25 0 0 0-.25-.25Z"></path>
+</svg>
+      <svg aria-hidden="true" height="16" viewBox="0 0 16 16" version="1.1" width="16" data-view-component="true" class="octicon octicon-check js-clipboard-check-icon color-fg-success d-none">
+    <path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z"></path>
+</svg>
+    </clipboard-copy>
+  </div></div>
+<h4 tabindex="-1" dir="auto"><a id="user-content-debugging-the-server" class="anchor" aria-hidden="true" tabindex="-1" href="#debugging-the-server"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">调试服务器</font></font></h4>
+<p dir="auto"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">要加载 JDWP 代理以进行 credhub jvm 调试，请按如下方式启动服务器：</font></font></p>
+<div class="highlight highlight-source-shell notranslate position-relative overflow-auto" dir="auto"><pre>./scripts/start_server.sh -Pdebug=true</pre><div class="zeroclipboard-container">
+    <clipboard-copy aria-label="Copy" class="ClipboardButton btn btn-invisible js-clipboard-copy m-2 p-0 tooltipped-no-delay d-flex flex-justify-center flex-items-center" data-copy-feedback="Copied!" data-tooltip-direction="w" value="./scripts/start_server.sh -Pdebug=true" tabindex="0" role="button">
+      <svg aria-hidden="true" height="16" viewBox="0 0 16 16" version="1.1" width="16" data-view-component="true" class="octicon octicon-copy js-clipboard-copy-icon">
+    <path d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 0 1 0 1.5h-1.5a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-1.5a.75.75 0 0 1 1.5 0v1.5A1.75 1.75 0 0 1 9.25 16h-7.5A1.75 1.75 0 0 1 0 14.25Z"></path><path d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0 1 14.25 11h-7.5A1.75 1.75 0 0 1 5 9.25Zm1.75-.25a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-7.5a.25.25 0 0 0-.25-.25Z"></path>
+</svg>
+      <svg aria-hidden="true" height="16" viewBox="0 0 16 16" version="1.1" width="16" data-view-component="true" class="octicon octicon-check js-clipboard-check-icon color-fg-success d-none">
+    <path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z"></path>
+</svg>
+    </clipboard-copy>
+  </div></div>
+<p dir="auto"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">然后，您可以将调试器附加到 jvm 进程的端口 5005。</font></font></p>
+<p dir="auto"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">要挂起服务器启动直到附加调试器（对于调试启动代码很有用），请按如下方式启动服务器：</font></font></p>
+<div class="highlight highlight-source-shell notranslate position-relative overflow-auto" dir="auto"><pre>./scripts/start_server.sh -Pdebugs=true</pre><div class="zeroclipboard-container">
+    <clipboard-copy aria-label="Copy" class="ClipboardButton btn btn-invisible js-clipboard-copy m-2 p-0 tooltipped-no-delay d-flex flex-justify-center flex-items-center" data-copy-feedback="Copied!" data-tooltip-direction="w" value="./scripts/start_server.sh -Pdebugs=true" tabindex="0" role="button">
+      <svg aria-hidden="true" height="16" viewBox="0 0 16 16" version="1.1" width="16" data-view-component="true" class="octicon octicon-copy js-clipboard-copy-icon">
+    <path d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 0 1 0 1.5h-1.5a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-1.5a.75.75 0 0 1 1.5 0v1.5A1.75 1.75 0 0 1 9.25 16h-7.5A1.75 1.75 0 0 1 0 14.25Z"></path><path d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0 1 14.25 11h-7.5A1.75 1.75 0 0 1 5 9.25Zm1.75-.25a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-7.5a.25.25 0 0 0-.25-.25Z"></path>
+</svg>
+      <svg aria-hidden="true" height="16" viewBox="0 0 16 16" version="1.1" width="16" data-view-component="true" class="octicon octicon-check js-clipboard-check-icon color-fg-success d-none">
+    <path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z"></path>
+</svg>
+    </clipboard-copy>
+  </div></div>
+<h4 tabindex="-1" dir="auto"><a id="user-content-running-tests-with-different-databases" class="anchor" aria-hidden="true" tabindex="-1" href="#running-tests-with-different-databases"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">使用不同的数据库运行测试</font></font></h4>
+<p dir="auto"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">使用不同的数据库进行测试需要您使用与所需数据库相对应的配置文件设置系统属性。</font><font style="vertical-align: inherit;">例如，要使用 H2 进行测试，您需要使用</font></font><code>-Dspring.profiles.active=unit-test-h2</code><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">配置文件运行测试。</font></font></p>
+<p dir="auto"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">在开发过程中，设置使用以下 VM 选项的不同 IntelliJ 测试配置文件会很有帮助：</font></font></p>
+<ul dir="auto">
+<li><code>-ea -Dspring.profiles.active=unit-test-h2</code><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">用于 H2 测试</font></font></li>
+<li><code>-ea -Dspring.profiles.active=unit-test-mysql</code><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">用于使用 MySQL 进行测试</font></font></li>
+<li><code>-ea -Dspring.profiles.active=unit-test-postgres</code><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">用于使用 Postgres 进行测试</font></font></li>
+</ul>
+<h3 tabindex="-1" dir="auto"><a id="user-content-testing-with-the-cli-and-acceptance-tests" class="anchor" aria-hidden="true" tabindex="-1" href="#testing-with-the-cli-and-acceptance-tests"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">使用 CLI 进行测试和验收测试</font></font></h3>
+<h4 tabindex="-1" dir="auto"><a id="user-content-using-the-cli-locally" class="anchor" aria-hidden="true" tabindex="-1" href="#using-the-cli-locally"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">在本地使用 CLI</font></font></h4>
+<p dir="auto"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">拉取</font></font><a href="https://github.com/cloudfoundry-incubator/credhub-cli"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">credhub-cli</font></font></a><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">存储库后，运行</font></font><code>make</code><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">，然后运行以下命令以定位本地运行的 CredHub 实例：</font></font></p>
+<div class="highlight highlight-source-shell notranslate position-relative overflow-auto" dir="auto"><pre>build/credhub login -s https://localhost:9000 --client-name=credhub_client --client-secret=secret --skip-tls-validation</pre><div class="zeroclipboard-container">
+    <clipboard-copy aria-label="Copy" class="ClipboardButton btn btn-invisible js-clipboard-copy m-2 p-0 tooltipped-no-delay d-flex flex-justify-center flex-items-center" data-copy-feedback="Copied!" data-tooltip-direction="w" value="build/credhub login -s https://localhost:9000 --client-name=credhub_client --client-secret=secret --skip-tls-validation" tabindex="0" role="button">
+      <svg aria-hidden="true" height="16" viewBox="0 0 16 16" version="1.1" width="16" data-view-component="true" class="octicon octicon-copy js-clipboard-copy-icon">
+    <path d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 0 1 0 1.5h-1.5a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-1.5a.75.75 0 0 1 1.5 0v1.5A1.75 1.75 0 0 1 9.25 16h-7.5A1.75 1.75 0 0 1 0 14.25Z"></path><path d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0 1 14.25 11h-7.5A1.75 1.75 0 0 1 5 9.25Zm1.75-.25a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-7.5a.25.25 0 0 0-.25-.25Z"></path>
+</svg>
+      <svg aria-hidden="true" height="16" viewBox="0 0 16 16" version="1.1" width="16" data-view-component="true" class="octicon octicon-check js-clipboard-check-icon color-fg-success d-none">
+    <path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z"></path>
+</svg>
+    </clipboard-copy>
+  </div></div>
+<h4 tabindex="-1" dir="auto"><a id="user-content-running-the-acceptance-tests" class="anchor" aria-hidden="true" tabindex="-1" href="#running-the-acceptance-tests"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">运行验收测试</font></font></h4>
+<p dir="auto"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">首先，请确保拉取并编译</font></font><a href="https://github.com/cloudfoundry-incubator/credhub-cli"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">credhub-cli</font></font></a><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">，如上所述。</font></font></p>
+<p dir="auto"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">确保您的开发服务器正在运行。</font><font style="vertical-align: inherit;">当它第一次启动时，它将创建 SSL 的服务器 CA 和服务器证书，以及用于测试双向 TLS 身份验证的受信任的客户端 CA。</font><font style="vertical-align: inherit;">这些将位于</font></font><code>src/test/resources</code><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">相对于</font></font><code>credhub</code><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">存储库的位置。</font></font></p>
+<p dir="auto"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">拉取</font></font><a href="https://github.com/cloudfoundry-incubator/credhub-acceptance-tests"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">credhub-acceptance-tests</font></font></a><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">并运行：</font></font></p>
+<div class="highlight highlight-source-shell notranslate position-relative overflow-auto" dir="auto"><pre>CREDENTIAL_ROOT=/path/to/credhub/repo/plus/src/test/resources ./scripts/run_tests.sh</pre><div class="zeroclipboard-container">
+    <clipboard-copy aria-label="Copy" class="ClipboardButton btn btn-invisible js-clipboard-copy m-2 p-0 tooltipped-no-delay d-flex flex-justify-center flex-items-center" data-copy-feedback="Copied!" data-tooltip-direction="w" value="CREDENTIAL_ROOT=/path/to/credhub/repo/plus/src/test/resources ./scripts/run_tests.sh" tabindex="0" role="button">
+      <svg aria-hidden="true" height="16" viewBox="0 0 16 16" version="1.1" width="16" data-view-component="true" class="octicon octicon-copy js-clipboard-copy-icon">
+    <path d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 0 1 0 1.5h-1.5a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-1.5a.75.75 0 0 1 1.5 0v1.5A1.75 1.75 0 0 1 9.25 16h-7.5A1.75 1.75 0 0 1 0 14.25Z"></path><path d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0 1 14.25 11h-7.5A1.75 1.75 0 0 1 5 9.25Zm1.75-.25a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-7.5a.25.25 0 0 0-.25-.25Z"></path>
+</svg>
+      <svg aria-hidden="true" height="16" viewBox="0 0 16 16" version="1.1" width="16" data-view-component="true" class="octicon octicon-check js-clipboard-check-icon color-fg-success d-none">
+    <path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z"></path>
+</svg>
+    </clipboard-copy>
+  </div></div>
+<p dir="auto"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">假设它有效，这将生成一些用于测试相互 TLS 的测试客户端证书（在</font></font><code>certs/</code><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">验收测试目录中），并针对本地运行的 credhub 服务器运行验收测试套件。</font></font></p>
+</article></div>
